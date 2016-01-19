@@ -8,4 +8,4 @@
 
 ## View Project Web Page
 
-(Click here to view the web page)[http://servo336.github.io/HAR_MachineLearning.html]
+http://servo336.github.io/HAR_MachineLearning.html
