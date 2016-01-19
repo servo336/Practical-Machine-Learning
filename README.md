@@ -3,5 +3,9 @@
 
 ## Contents
 
-- [HAR_MachineLearning.html  *Click to view page*](htttp://www.google.com)
+- HAR_MachineLearning.html (Knitted HTML page)
 - HAR_MachineLearning.Rmd (R markdown file)
+
+## View Project Web Page
+
+(Click here to view the web page)[http://servo336.github.io/HAR_MachineLearning.html]
