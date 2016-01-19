@@ -1,0 +1,153 @@
+---
+title: "Human Activity Recognition Through Machine Learning"
+author: "Servillano Poserio"
+date: "January 14, 2016"
+output: html_document
+---
+
+## Abstract
+Human Activity Recognition - HAR - has emerged as a key research area in the last years and is gaining increasing attention by the pervasive computing research community, especially for the development of context-aware systems. There are many potential applications for HAR, like: elderly monitoring, life log systems for monitoring energy expenditure and for supporting weight-loss programs, and digital assistants for weight lifting exercises.
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+The goal of this project is to predict the manner in which they did the exercise applying Data Analysis and Machine Learning methodologies. 
+
+## Data Source
+
+The data source for this project is courtesy of [Groupware@LES](http://groupware.les.inf.puc-rio.br/har). 
+
+
+
+## Loading and preprocessing the data
+#### 1. Download the training set and the test set. Make sure that the csv files are in the set working directory.
+
+```{r}
+trainSetURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testSetURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+## set file names
+fnTrain <- "pml-training.csv"
+fnTest <- "pml-testing.csv"
+## Download Training Set
+if (!file.exists(fnTrain)) {
+  download.file(trainSetURL, destfile=fnTrain)
+}
+## Download Test Set
+if (!file.exists(fnTest)) {
+  download.file(testSetURL, destfile=fnTest)
+}
+
+```
+
+#### 2. Sanitize and normalize datasets
+```{r}
+trainingSet <- read.csv("pml-training.csv",na.strings = c("NA", "", "#DIV/0!"))
+trainingSet <- trainingSet[,-c(1:7)]
+## Look for missing data and remove them
+killNAsTrain <- function(i) {sum(is.na(trainingSet[,i]) * 1) } 
+normTrainData <- sapply(1:dim(trainingSet)[2],killNAsTrain) == 0 
+trainingSet <- trainingSet[,normTrainData]
+dim(trainingSet)
+## Prep test set
+testingSet <- read.csv("pml-testing.csv",na.strings = c("NA", "", "#DIV/0!"))
+testingSet <- testingSet[,-c(1:7)]
+killNAsTest <- function(i) {sum(is.na(testingSet[,i]) * 1) }
+normTestData <- sapply(1:dim(testingSet)[2],killNAsTest) == 0 
+testingSet <- testingSet[,normTestData]
+dim(testingSet)
+```
+
+#### 3. Partition datasets for cross validation
+
+```{r warning=FALSE,message=FALSE}
+library(caret)
+## set seed for reproducibility of this simulation
+set.seed(15243) 
+dpTrain <- createDataPartition(trainingSet$classe, p = 0.7, list = FALSE)
+sliceTrain <- trainingSet[dpTrain,]
+## Partion training set for cross-validation
+sliceCVal <- trainingSet[-dpTrain,]
+## kFold Cross validation data. Using 3 folds
+kfCV <- trainControl(method = "cv",number = 3) 
+
+```
+
+## Build Prediction Model
+
+### Model 1: RPart Classification Algorithm
+
+#### 1. Visualize rpart Tree Model
+
+```{r warning=FALSE,message=FALSE,fig.width=20, fig.height=10}
+library(rpart)
+library(rpart.plot)
+treeModel <- rpart(classe ~ ., data=sliceTrain, method="class")
+prp(treeModel)
+
+```
+
+#### 2. Train model using rpart classification algorithm with k-fold cross-validation.
+
+```{r warning=FALSE,message=FALSE}
+
+rp_fitModel <- train(classe ~ ., data = sliceTrain, method = "rpart" , trControl = kfCV )
+print(rp_fitModel)
+
+```
+
+
+#### 3. Test/Predict model using testing dataset
+
+```{r warning=FALSE,message=FALSE}
+
+tmCVrp <- predict(rp_fitModel, newdata = sliceCVal)
+# show confusionMatrix for rpart classification
+confusionMatrix(sliceCVal$classe,tmCVrp)
+
+```
+
+The confusionMatrix indicates that the RPart Classifier model has an accuracy rate of 0.5733. The performance of this model is not as quite as good as expected. We now then try the Random Forest if it's better.
+
+### Model 2: Random Forest Algorithm
+
+#### 1. Visualize data correlation
+
+```{r warning=FALSE,message=FALSE,fig.width=15, fig.height=15}
+library(corrplot)
+rfCorrPlot <- cor(sliceTrain[, -length(names(sliceTrain))])
+corrplot(rfCorrPlot, method="color")
+
+```
+
+#### 2. Train model using Random Forest with k-fold cross-validation.
+
+```{r warning=FALSE,message=FALSE}
+
+rf_fitModel <- train(classe ~ ., data = sliceTrain, method = "rf" , trControl = kfCV )
+#print(rf_fitModel)
+
+```
+
+#### 3. Test/Predict model using cross-validated dataset
+
+```{r warning=FALSE,message=FALSE}
+
+tmCVrf <- predict(rf_fitModel, newdata = sliceCVal)
+# show confusionMatrix for random forest
+confusionMatrix(sliceCVal$classe,tmCVrf)
+
+```
+
+## Model Selection
+
+Random Forest algorithm by far has the best accuracy by comparison againts RPart Classifier. We applied the generated model to the provided testing data set.
+
+
+####  Test the model using the testing set.
+
+```{r warning=FALSE,message=FALSE}
+
+testRF <- predict(rf_fitModel, newdata = testingSet)
+## show results
+testRF
+
+```
